@@ -7,6 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(catkin REQUIRED COMPONENTS
 	dh_casadi_tools
+	dh_std_tools
 )
 
 # catkin_python_setup()

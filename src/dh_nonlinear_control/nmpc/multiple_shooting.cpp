@@ -1,4 +1,5 @@
 #include <dh_casadi_tools/conversion/casadi_eigen.hpp>
+#include <dh_std_tools/vector.hpp>
 
 #include "../../../include/dh_nonlinear_control/nmpc/multiple_shooting.hpp"
 #include "../../../include/dh_nonlinear_control/c2d.hpp"
@@ -11,30 +12,37 @@ namespace ctrl
 {
 NMPC_MultipleShooting::NMPC_MultipleShooting(
   const function<MX(const MX&, const MX&)>& discreteDynamics,
-  const function<MX(const MX&, const MX&)>& stepCost,
+  const function<MX(const MX&, const MX&, const DM&)>& stepCost,
   const function<void(Opti&, const MX&)>& stateConstraints,
   const function<void(Opti&, const MX&)>& inputConstraints,
+  const vector<double> decay_time_consts,
   const unsigned int& x_dim,
   const unsigned int& u_dim,
   const unsigned int& Hp,
-  const unsigned int& Hu)
+  const unsigned int& Hu,
+  const double& dt)
   : discreteDynamics_(discreteDynamics),
     stepCost_(stepCost),
     stateConstraints_(stateConstraints),
     inputConstraints_(inputConstraints),
+    decay_time_consts_(decay_time_consts),  // std::vectorからcasadi::DMが構築できる
     x_dim_(x_dim),
     u_dim_(u_dim),
     Hp_(Hp),
     Hu_(Hu),
+    dt_(dt),
     x0_(x_dim, 1),
     s_(x_dim, 1),
     prev_xs_(DM::zeros(x_dim, Hp + 1)),
     prev_us_(DM::zeros(u_dim, Hu)),
     opt_u_(u_dim)
 {
-  assert(x_dim_ > 0);
-  assert(u_dim_ > 0);
+  assert(decay_time_consts.size() == x_dim);
+  assert(dh_std::all_ge(decay_time_consts, 0.));
+  assert(x_dim > 0);
+  assert(u_dim > 0);
   assert(0 < Hu && Hu <= Hp);
+  assert(dt > 0.);
 }
 
 VectorXd NMPC_MultipleShooting::step(const VectorXd& x0, const VectorXd& s)
@@ -90,11 +98,13 @@ void NMPC_MultipleShooting::setInitialGuess(Opti& opti, const MX& xs, const MX& 
 void NMPC_MultipleShooting::setObjective(Opti& opti, const MX& xs, const MX& us)
 {
   MX obj = 0;
+  DM x_ref;
 
   for (int k = 0; k <= Hp_; ++k)
   {
     const auto& u = (k < Hu_) ? us(all_, k) : us(all_, Hu_ - 1);
-    obj += stepCost_(xs(all_, k), u);
+    x_ref = calcReferenceState(k);
+    obj += stepCost_(xs(all_, k), u, x_ref);
   }
 
   opti.minimize(obj);
@@ -119,5 +129,11 @@ void NMPC_MultipleShooting::setConstraints(Opti& opti, const MX& xs, const MX& u
   {
     inputConstraints_(opti, us(all_, k));
   }
+}
+
+DM NMPC_MultipleShooting::calcReferenceState(unsigned int k)
+{
+  double t = dt_ * k;
+  return s_ - exp(-t / (decay_time_consts_ + 1e-9)) * (s_ - x0_);
 }
 }  // namespace ctrl

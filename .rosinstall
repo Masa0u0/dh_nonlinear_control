@@ -3,3 +3,9 @@
   uri: git@github.com:Masa0u0/dh_casadi_tools.git,
   version: main,
 }
+
+- git: {
+  local-name: dh_std_tools,
+  uri: git@github.com:Masa0u0/dh_std_tools.git,
+  version: main,
+}
