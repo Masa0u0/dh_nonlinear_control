@@ -1,0 +1,5 @@
+- git: {
+  local-name: dh_casadi_tools,
+  uri: git@github.com:Masa0u0/dh_casadi_tools.git,
+  version: main,
+}
