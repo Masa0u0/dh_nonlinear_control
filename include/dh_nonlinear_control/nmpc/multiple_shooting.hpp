@@ -6,15 +6,24 @@
 
 namespace ctrl
 {
+class NMPC_MultipleShootingModel
+{
+public:
+  virtual casadi::MX discreteDynamics(const casadi::MX& x, const casadi::MX& u) = 0;
+
+  virtual casadi::MX
+  stepCost(const casadi::MX& x, const casadi::MX& u, const casadi::DM& x_ref) = 0;
+
+  virtual void stateConstraints(casadi::Opti& opti, const casadi::MX& x) = 0;
+
+  virtual void inputConstraints(casadi::Opti& opti, const casadi::MX& u) = 0;
+};
+
 class NMPC_MultipleShooting
 {
 public:
   NMPC_MultipleShooting(
-    const std::function<casadi::MX(const casadi::MX&, const casadi::MX&)>& discreteDynamics,
-    const std::function<casadi::MX(const casadi::MX&, const casadi::MX&, const casadi::DM&)>&
-      stepCost,
-    const std::function<void(casadi::Opti&, const casadi::MX&)>& stateConstraints,
-    const std::function<void(casadi::Opti&, const casadi::MX&)>& inputConstraints,
+    NMPC_MultipleShootingModel& model,
     const std::vector<double> decay_time_consts,
     const unsigned int& x_dim,
     const unsigned int& u_dim,
@@ -26,11 +35,7 @@ public:
   void setInitialGuess(const Eigen::VectorXd& stable_x, const Eigen::VectorXd& stable_u);
 
 private:
-  const std::function<casadi::MX(const casadi::MX&, const casadi::MX&)>& discreteDynamics_;
-  const std::function<casadi::MX(const casadi::MX&, const casadi::MX&, const casadi::DM&)>&
-    stepCost_;
-  const std::function<void(casadi::Opti&, const casadi::MX&)>& stateConstraints_;
-  const std::function<void(casadi::Opti&, const casadi::MX&)>& inputConstraints_;
+  NMPC_MultipleShootingModel& model_;
   const casadi::DM decay_time_consts_;
   const unsigned int x_dim_;
   const unsigned int u_dim_;

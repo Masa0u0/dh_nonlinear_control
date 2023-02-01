@@ -11,20 +11,14 @@ using namespace casadi;
 namespace ctrl
 {
 NMPC_MultipleShooting::NMPC_MultipleShooting(
-  const function<MX(const MX&, const MX&)>& discreteDynamics,
-  const function<MX(const MX&, const MX&, const DM&)>& stepCost,
-  const function<void(Opti&, const MX&)>& stateConstraints,
-  const function<void(Opti&, const MX&)>& inputConstraints,
+  NMPC_MultipleShootingModel& model,
   const vector<double> decay_time_consts,
   const unsigned int& x_dim,
   const unsigned int& u_dim,
   const unsigned int& Hp,
   const unsigned int& Hu,
   const double& dt)
-  : discreteDynamics_(discreteDynamics),
-    stepCost_(stepCost),
-    stateConstraints_(stateConstraints),
-    inputConstraints_(inputConstraints),
+  : model_(model),
     decay_time_consts_(decay_time_consts),  // std::vectorからcasadi::DMが構築できる
     x_dim_(x_dim),
     u_dim_(u_dim),
@@ -104,7 +98,7 @@ void NMPC_MultipleShooting::setObjective(Opti& opti, const MX& xs, const MX& us)
   {
     const auto& u = (k < Hu_) ? us(all_, k) : us(all_, Hu_ - 1);
     x_ref = calcReferenceState(k);
-    obj += stepCost_(xs(all_, k), u, x_ref);
+    obj += model_.stepCost(xs(all_, k), u, x_ref);
   }
 
   opti.minimize(obj);
@@ -117,17 +111,17 @@ void NMPC_MultipleShooting::setConstraints(Opti& opti, const MX& xs, const MX& u
   for (int k = 0; k < Hp_; ++k)
   {
     const auto& u = (k < Hu_) ? us(all_, k) : us(all_, Hu_ - 1);
-    opti.subject_to(xs(all_, k + 1) == discreteDynamics_(xs(all_, k), u));
+    opti.subject_to(xs(all_, k + 1) == model_.discreteDynamics(xs(all_, k), u));
   }
 
   // ユーザ制約
   for (int k = 1; k <= Hp_; ++k)
   {
-    stateConstraints_(opti, xs(all_, k));
+    model_.stateConstraints(opti, xs(all_, k));
   }
   for (int k = 0; k < Hu_; ++k)
   {
-    inputConstraints_(opti, us(all_, k));
+    model_.inputConstraints(opti, us(all_, k));
   }
 }
 
