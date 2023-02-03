@@ -55,6 +55,7 @@ VectorXd NMPC_MultipleShooting::step(const VectorXd& x0, const VectorXd& s)
   setObjective(opti, xs, us);
   setConstraints(opti, xs, us);
 
+  opti.solver("ipopt");
   auto sol = opti.solve();
   prev_xs_ = sol.value(xs);
   prev_us_ = sol.value(us);
